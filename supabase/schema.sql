@@ -1,0 +1,13 @@
+create extension if not exists pgcrypto;
+create table if not exists public.organizations(id uuid primary key default gen_random_uuid(),name text not null,created_at timestamptz not null default now());
+create table if not exists public.profiles(id uuid primary key references auth.users(id) on delete cascade,organization_id uuid references public.organizations(id) on delete cascade,full_name text,role text default 'member',created_at timestamptz not null default now());
+create table if not exists public.people(id uuid primary key default gen_random_uuid(),organization_id uuid not null references public.organizations(id) on delete cascade,name text not null,registration text default '',role text default '',phone text default '',company text default '',manager text default '',training_date date,created_at timestamptz not null default now());
+create table if not exists public.templates(id uuid primary key default gen_random_uuid(),organization_id uuid not null references public.organizations(id) on delete cascade,name text not null,config jsonb not null default '{}'::jsonb,created_at timestamptz not null default now());
+create table if not exists public.batches(id uuid primary key default gen_random_uuid(),organization_id uuid not null references public.organizations(id) on delete cascade,name text not null,template_id uuid references public.templates(id) on delete set null,person_ids uuid[] not null default '{}',created_at timestamptz not null default now());
+alter table public.organizations enable row level security;alter table public.profiles enable row level security;alter table public.people enable row level security;alter table public.templates enable row level security;alter table public.batches enable row level security;
+create or replace function public.current_org_id() returns uuid language sql stable security definer set search_path=public as $$ select organization_id from public.profiles where id=auth.uid() $$;
+create policy "org members read org" on public.organizations for select using(id=public.current_org_id());
+create policy "org members read profiles" on public.profiles for select using(organization_id=public.current_org_id());
+create policy "org members manage people" on public.people for all using(organization_id=public.current_org_id()) with check(organization_id=public.current_org_id());
+create policy "org members manage templates" on public.templates for all using(organization_id=public.current_org_id()) with check(organization_id=public.current_org_id());
+create policy "org members manage batches" on public.batches for all using(organization_id=public.current_org_id()) with check(organization_id=public.current_org_id());
