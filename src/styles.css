@@ -3,3 +3,17 @@
 .generate-panel{background:#fff;border:1px solid #e3e4e8;border-radius:14px;padding:20px;display:grid;grid-template-columns:1fr 240px 180px auto;gap:18px;align-items:center;margin-bottom:12px}.generate-panel h2{margin:4px 0;font-size:21px}.generate-panel p{margin:4px 0;color:#7b8089;font-size:12px}.generate-select-label{font-size:10px;font-weight:800;color:#555}.generate-select-label select{display:block;width:100%;margin-top:6px;border:1px solid #dfe1e5;border-radius:8px;padding:10px;background:#fff;font-size:12px}.generate-preview-mini{justify-self:center;transform:scale(.58);transform-origin:center}.generate-info{display:flex;gap:12px;align-items:center;background:#fff7f7;border:1px solid #ffdede;border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:11px}.generate-info span{color:#777}.font-preview-label{font-size:10px;color:#666;background:#f7f7f8;border-radius:7px;padding:8px;margin:3px 0 8px}.font-example{border:1px solid #e3e4e8;border-radius:8px;background:#fff;padding:11px 7px;min-height:50px;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;margin-top:8px;color:#222}.drag-field{overflow:hidden;white-space:nowrap;padding:1px 3px}.image-badge-field{font-family:Arial,sans-serif;line-height:1;overflow:hidden;white-space:nowrap;padding:0 3px;box-sizing:border-box}
 @media(max-width:1100px){.generate-panel{grid-template-columns:1fr 200px}.generate-preview-mini{display:none}}
 @media(max-width:700px){.generate-panel{grid-template-columns:1fr}.generate-preview-mini{display:none}}
+
+
+@media print{
+  @page{size:A4 portrait;margin:5mm}
+  html,body,#root{width:210mm!important;min-width:210mm!important;margin:0!important;padding:0!important;background:#fff!important}
+  .sidebar,.topbar,.generate-panel,.generate-info,.section-head,.history,.page>.toolbar,.page>.panel,.page>.hero,.page>.stats,.page>.quick-grid{display:none!important}
+  .main{margin:0!important;padding:0!important;width:100%!important}
+  .page{padding:0!important;margin:0!important}
+  .print-sheet{display:grid!important;grid-template-columns:repeat(4,48mm)!important;grid-template-rows:repeat(3,74mm)!important;grid-auto-rows:74mm!important;gap:0!important;width:192mm!important;height:222mm!important;margin:0!important;padding:0!important;align-content:start!important;justify-content:start!important;overflow:visible!important}
+  .print-sheet .image-badge,.print-sheet .badge{width:48mm!important;height:74mm!important;box-sizing:border-box!important;margin:0!important;break-inside:avoid!important;page-break-inside:avoid!important}
+  .print-sheet .image-badge-field{font-family:Arial,sans-serif!important;line-height:1!important}
+  .print-sheet .badge{transform:none!important}
+  .print-sheet>*{visibility:visible!important}
+}
