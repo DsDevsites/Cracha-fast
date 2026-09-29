@@ -1,0 +1,1 @@
+export type Person={id:string;name:string;registration:string;role:string;phone?:string;company?:string;manager?:string;trainingDate?:string};export type BadgeTemplate={id:string;name:string;title:string;subtitle:string;primary:string;secondary:string;logoText:string;cardsPerPage:number};export type Batch={id:string;name:string;templateId:string;people:Person[];createdAt:string};
