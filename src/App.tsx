@@ -13,7 +13,8 @@ const defaultFields:Record<FieldKey,FieldPosition>={name:{x:8,y:67,width:84,heig
 function normalizedTemplate(t:BadgeTemplate):BadgeTemplate{const fields=t.fieldPositions||defaultFields;const normalized=Object.fromEntries((Object.keys(defaultFields) as FieldKey[]).map(k=>[k,{...defaultFields[k],...(fields[k]||{})}])) as Record<FieldKey,FieldPosition>;return{...t,fieldPositions:normalized}}
 function Badge({person,template}:{person:Person;template:BadgeTemplate}){
   const t=normalizedTemplate(template); const f=t.fieldPositions!
-  if(t.backgroundDataUrl)return <div className="image-badge" style={{backgroundImage:'url('+t.backgroundDataUrl+')'}}>
+  if(t.backgroundDataUrl)return <div className="image-badge">
+    <img className="image-badge-bg" src={t.backgroundDataUrl} alt="" />
     <div className="image-badge-field" style={fieldStyle(f.name)}>{person.name||'NOME'}</div>
     <div className="image-badge-field" style={fieldStyle(f.registration)}>{person.registration||'MATRÍCULA'}</div>
     <div className="image-badge-field" style={fieldStyle(f.role)}>{person.role||'FUNÇÃO'}</div>
