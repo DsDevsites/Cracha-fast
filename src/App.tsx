@@ -8,19 +8,19 @@ import {exportDocx} from './lib/docxExport'
 
 type Tab='dashboard'|'people'|'templates'|'generate'|'settings'
 const emptyPerson:Person={id:'preview',name:'Nome do colaborador',registration:'00000',role:'Função'}
-const defaultFields:Record<FieldKey,FieldPosition>={name:{x:8,y:67,width:84,height:7},registration:{x:8,y:75,width:84,height:7},role:{x:8,y:83,width:84,height:7}}
+const defaultFields:Record<FieldKey,FieldPosition>={name:{x:8,y:67,width:84,height:7,fontSize:7,fontWeight:'normal',align:'left'},registration:{x:8,y:75,width:84,height:7,fontSize:7,fontWeight:'normal',align:'left'},role:{x:8,y:83,width:84,height:7,fontSize:7,fontWeight:'normal',align:'left'}}
 
-function normalizedTemplate(t:BadgeTemplate):BadgeTemplate{return{...t,fieldPositions:t.fieldPositions||defaultFields}}
+function normalizedTemplate(t:BadgeTemplate):BadgeTemplate{const fields=t.fieldPositions||defaultFields;const normalized=Object.fromEntries((Object.keys(defaultFields) as FieldKey[]).map(k=>[k,{...defaultFields[k],...(fields[k]||{})}])) as Record<FieldKey,FieldPosition>;return{...t,fieldPositions:normalized}}
 function Badge({person,template}:{person:Person;template:BadgeTemplate}){
   const t=normalizedTemplate(template); const f=t.fieldPositions!
   if(t.backgroundDataUrl)return <div className="image-badge" style={{backgroundImage:'url('+t.backgroundDataUrl+')'}}>
-    <div className="image-badge-field" style={fieldStyle(f.name)}>{person.name||'Nome'}</div>
-    <div className="image-badge-field" style={fieldStyle(f.registration)}>{person.registration||'Matrícula'}</div>
-    <div className="image-badge-field" style={fieldStyle(f.role)}>{person.role||'Função'}</div>
+    <div className="image-badge-field" style={fieldStyle(f.name)}>{person.name||'NOME'}</div>
+    <div className="image-badge-field" style={fieldStyle(f.registration)}>{person.registration||'MATRÍCULA'}</div>
+    <div className="image-badge-field" style={fieldStyle(f.role)}>{person.role||'FUNÇÃO'}</div>
   </div>
   return <div className="badge"><div className="badge-symbol"><div className="symbol-triangle">⚠</div></div><div className="badge-title" style={{background:t.primary}}>{t.title}<br/>{t.subtitle}</div><div className="badge-fields"><div><b>NOME:</b> {person.name||'—'}</div><div><b>MATRÍCULA:</b> {person.registration||'—'}</div><div><b>FUNÇÃO:</b> {person.role||'—'}</div></div><div className="badge-logo"><span className="logo-mark">◎</span><strong style={{color:t.primary}}>{t.logoText}</strong></div></div>
 }
-function fieldStyle(p:FieldPosition){return{left:p.x+'%',top:p.y+'%',width:p.width+'%',height:p.height+'%'}}
+function fieldStyle(p:FieldPosition){return{left:p.x+'%',top:p.y+'%',width:p.width+'%',height:p.height+'%',fontSize:p.fontSize+'pt',fontWeight:p.fontWeight,textAlign:p.align}}
 function Nav({active,icon,text,onClick}:{active:boolean;icon:React.ReactNode;text:string;onClick:()=>void}){return <button className={active?'nav active':'nav'} onClick={onClick}>{icon}<span>{text}</span></button>}
 function Stat({label,value,icon}:{label:string;value:string|number;icon:React.ReactNode}){return <div className="stat"><div className="stat-icon">{icon}</div><div><span>{label}</span><strong>{value}</strong></div></div>}
 
@@ -127,7 +127,7 @@ function VisualEditor({template,onChange}:{template:BadgeTemplate;onChange:(p:Pa
                     const up=()=>{window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up)}
                     window.addEventListener('mousemove',move);window.addEventListener('mouseup',up)
                   }}>
-                  {k==='name'?'NOME':k==='registration'?'MATRÍCULA':'FUNÇÃO'}<small>arraste</small>
+                  {k==='name'?'NOME: '+(emptyPerson.name):k==='registration'?'MATRÍCULA: '+(emptyPerson.registration):'FUNÇÃO: '+(emptyPerson.role)}<small>arraste</small>
                 </div>)}
             </div>
           : <div className="drop-zone">
@@ -148,6 +148,24 @@ function VisualEditor({template,onChange}:{template:BadgeTemplate;onChange:(p:Pa
             <input type="number" min="0" max="100" step=".5" value={Number(t.fieldPositions![selected][k])}
               onChange={e=>updateField(selected,{[k]:Number(e.target.value)})}/>
           </label>)}
+        <div className="font-preview-label">Tamanho da letra: <b>{t.fieldPositions![selected].fontSize} pt</b></div>
+        <label>Tamanho da letra
+          <input type="number" min="4" max="30" step=".5" value={t.fieldPositions![selected].fontSize}
+            onChange={e=>updateField(selected,{fontSize:Number(e.target.value)})}/>
+        </label>
+        <label>Peso da letra
+          <select value={t.fieldPositions![selected].fontWeight} onChange={e=>updateField(selected,{fontWeight:e.target.value as 'normal'|'bold'})}>
+            <option value="normal">Normal</option><option value="bold">Negrito</option>
+          </select>
+        </label>
+        <label>Alinhamento
+          <select value={t.fieldPositions![selected].align} onChange={e=>updateField(selected,{align:e.target.value as 'left'|'center'|'right'})}>
+            <option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option>
+          </select>
+        </label>
+        <div className="font-example" style={{fontSize:t.fieldPositions![selected].fontSize+'pt',fontWeight:t.fieldPositions![selected].fontWeight,textAlign:t.fieldPositions![selected].align}}>
+          {selected==='name'?'ALBERONI MACEDO DE SENA':selected==='registration'?'123456':'TÉCNICO DE SEGURANÇA'}
+        </div>
         <div className="field-tip">O OCR procura NOME, MATRÍCULA e FUNÇÃO. Se não encontrar algum campo, basta posicioná-lo manualmente.</div>
       </div>
     </div>
@@ -159,7 +177,7 @@ function App(){
  {tab==='dashboard'&&<section className="page"><div className="hero"><div><span className="pill">12 por folha A4</span><h2>Crie lotes de carteirinhas em poucos cliques.</h2><p>Agora você também pode usar uma foto do crachá pronto como fundo e posicionar Nome, Matrícula e Função por cima.</p><button className="primary" onClick={()=>setTab('templates')}><Palette size={17}/> Montar modelo</button></div><div className="hero-preview"><Badge person={people[0]||emptyPerson} template={template}/></div></div><div className="stats"><Stat label="Pessoas" value={people.length} icon={<Users/>}/><Stat label="Modelos" value={templates.length} icon={<Palette/>}/><Stat label="Lotes gerados" value={batches.length} icon={<FileDown/>}/><Stat label="Por folha" value="12" icon={<FileSpreadsheet/>}/></div><div className="quick-grid"><button className="quick" onClick={()=>setTab('templates')}><span>01</span><div><b>Monte o modelo</b><p>Envie ou cole a foto do crachá pronto.</p></div><Plus size={18}/></button><button className="quick" onClick={()=>setTab('people')}><span>02</span><div><b>Importe a lista</b><p>Nome, matrícula e função em XLSX/CSV.</p></div><Plus size={18}/></button><button className="quick" onClick={gen}><span>03</span><div><b>Gere em lote</b><p>12 por A4, impressão ou Word.</p></div><Plus size={18}/></button></div></section>}
  {tab==='people'&&<section className="page"><div className="toolbar"><div className="search"><Search size={17}/><input placeholder="Buscar por nome, matrícula ou função..." value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="toolbar-actions"><button className="secondary" onClick={()=>document.getElementById('people-file')?.click()}><Upload size={17}/> Importar</button><button className="primary" onClick={()=>updatePeople([...people,{id:crypto.randomUUID(),name:'',registration:'',role:''}])}><Plus size={17}/> Adicionar</button></div></div><input id="people-file" type="file" hidden accept=".xlsx,.xls,.csv" onChange={e=>importFile(e.target.files?.[0])}/><div className="table-wrap"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Função</th><th></th></tr></thead><tbody>{filtered.map(p=><tr key={p.id}><td><input value={p.name} onChange={e=>updatePeople(people.map(x=>x.id===p.id?{...x,name:e.target.value}:x))}/></td><td><input value={p.registration} onChange={e=>updatePeople(people.map(x=>x.id===p.id?{...x,registration:e.target.value}:x))}/></td><td><input value={p.role} onChange={e=>updatePeople(people.map(x=>x.id===p.id?{...x,role:e.target.value}:x))}/></td><td><button className="icon-btn danger" onClick={()=>updatePeople(people.filter(x=>x.id!==p.id))}><Trash2 size={16}/></button></td></tr>)}</tbody></table>{!filtered.length&&<div className="empty"><Users size={34}/><b>Nenhuma pessoa cadastrada</b><span>Importe uma planilha ou adicione manualmente.</span></div>}</div></section>}
  {tab==='templates'&&<section className="page"><div className="template-layout"><div className="panel"><div className="section-head"><div><h3>Editor de modelo</h3><p>Você pode criar do zero ou usar um crachá pronto.</p></div><button className="secondary" onClick={()=>{const t=normalizedTemplate({...defaultTemplate,id:crypto.randomUUID(),name:'Novo modelo'});updateTemplates([...templates,t]);setSelectedTemplate(t.id)}}><Plus size={17}/> Novo modelo</button></div><label>Modelo<select value={selectedTemplate} onChange={e=>setSelectedTemplate(e.target.value)}>{templates.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><label>Nome do modelo<input value={template.name} onChange={e=>edit({name:e.target.value})}/></label><label>Cor principal<input type="color" value={template.primary} onChange={e=>edit({primary:e.target.value})}/></label><button className="primary full" onClick={()=>alert('Modelo salvo automaticamente.') }><Save size={17}/> Salvar modelo</button></div><VisualEditor template={template} onChange={edit}/></div></section>}
- {tab==='generate'&&<section className="page"><div className="generate-head"><div><h2>Pronto para gerar</h2><p>{people.length} pessoas · modelo <b>{template.name}</b> · {template.cardsPerPage} por folha A4.</p></div><div className="toolbar-actions"><button className="secondary" onClick={()=>window.print()}><Printer size={17}/> Imprimir / PDF</button><button className="primary" onClick={()=>exportDocx(people,template)}><FileDown size={17}/> Word editável</button></div></div><div className="print-sheet">{people.map(p=><Badge key={p.id} person={p} template={template}/>)}</div><div className="section-head"><div><h3>Histórico</h3><p>Os lotes ficam registrados neste navegador.</p></div></div><div className="history">{batches.slice(0,8).map(b=><div className="history-row" key={b.id}><div><b>{b.name}</b><span>{b.people.length} carteirinhas · {new Date(b.createdAt).toLocaleString('pt-BR')}</span></div><button className="secondary" onClick={()=>exportDocx(b.people,templates.find(t=>t.id===b.templateId)||template)}>Baixar Word</button></div>)}</div></section>}
+ {tab==='generate'&&<section className="page"><div className="generate-panel"><div><span className="eyebrow">MODELO DE IMPRESSÃO</span><h2>Escolha o modelo que deseja gerar</h2><p>{people.length} pessoas serão preenchidas com os dados cadastrados.</p></div><label className="generate-select-label">Modelo<select value={selectedTemplate} onChange={e=>setSelectedTemplate(e.target.value)}>{templates.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><div className="generate-preview-mini"><Badge person={people[0]||emptyPerson} template={template}/></div><div className="toolbar-actions"><button className="secondary" onClick={()=>window.print()}><Printer size={17}/> Imprimir / PDF</button><button className="primary" onClick={()=>exportDocx(people,template)}><FileDown size={17}/> Word editável</button></div></div><div className="generate-info"><b>{template.name}</b><span>{template.cardsPerPage} por folha A4 · {template.backgroundDataUrl?'modelo com imagem':'modelo criado no sistema'}</span></div><div className="print-sheet">{people.map(p=><Badge key={p.id} person={p} template={template}/>)}</div><div className="section-head"><div><h3>Histórico</h3><p>Os lotes ficam registrados neste navegador.</p></div></div><div className="history">{batches.slice(0,8).map(b=><div className="history-row" key={b.id}><div><b>{b.name}</b><span>{b.people.length} carteirinhas · {new Date(b.createdAt).toLocaleString('pt-BR')}</span></div><button className="secondary" onClick={()=>exportDocx(b.people,templates.find(t=>t.id===b.templateId)||template)}>Baixar Word</button></div>)}</div></section>}
  {tab==='settings'&&<section className="page"><div className="panel narrow"><div className="section-head"><div><h3>Configurações</h3><p>Preparação para a versão SaaS multiempresa.</p></div></div><div className="settings-card"><BadgeCheck/><div><b>Editor visual ativo</b><span>Modelos podem usar uma imagem pronta como fundo. Os campos são posicionados separadamente e ficam preenchidos com os dados da lista.</span></div></div><button className="secondary" onClick={()=>{localStorage.clear();location.reload()}}><Trash2 size={17}/> Limpar dados locais</button></div></section>}</main></div>
 }
 export default App
