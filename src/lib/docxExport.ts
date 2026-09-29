@@ -71,7 +71,7 @@ export async function exportDocx(people:Person[],t:BadgeTemplate){
       cells.push(new TableCell({
         verticalAlign:VerticalAlign.CENTER,
         margins:{top:0,bottom:0,left:0,right:0},
-        children:[new Paragraph({spacing:{before:0,after:0,line:1},children:[new ImageRun({data:image,transformation:{width:181,height:280}})]})]
+        children:[new Paragraph({spacing:{before:0,after:0,line:1},children:[new ImageRun({data:image,type:'png',transformation:{width:181,height:280}})]})]
       }))
     }
     rows.push(new TableRow({children:cells}))
