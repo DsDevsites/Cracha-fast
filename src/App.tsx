@@ -25,23 +25,134 @@ function Nav({active,icon,text,onClick}:{active:boolean;icon:React.ReactNode;tex
 function Stat({label,value,icon}:{label:string;value:string|number;icon:React.ReactNode}){return <div className="stat"><div className="stat-icon">{icon}</div><div><span>{label}</span><strong>{value}</strong></div></div>}
 
 function VisualEditor({template,onChange}:{template:BadgeTemplate;onChange:(p:Partial<BadgeTemplate>)=>void}){
-  const t=normalizedTemplate(template); const [selected,setSelected]=useState<FieldKey>('name'); const [busy,setBusy]=useState(false); const inputRef=useRef<HTMLInputElement>(null)
-  const updateField=(key:FieldKey,p:Partial<FieldPosition>)=>onChange({fieldPositions:{...t.fieldPositions!,[key]:{...t.fieldPositions![key],...p}}})
-  const loadImage=(file?:File)=>{if(!file)return;const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{const max=1200;const scale=Math.min(1,max/img.width,max/img.height);const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d')!.drawImage(img,0,0,c.width,c.height);onChange({backgroundDataUrl:c.toDataURL('image/jpeg',.9)})};img.src=String(reader.result)};reader.readAsDataURL(file)}
-  const paste=(e:React.ClipboardEvent<HTMLDivElement>)=>{const item=[...e.clipboardData.items].find(x=>x.type.startsWith('image/'));if(item){e.preventDefault();loadImage(item.getAsFile()||undefined)}}
-  const autoDetect=async()=>{if(!t.backgroundDataUrl)return;setBusy(true);try{const img=new Image();img.src=t.backgroundDataUrl;await new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(new Error('image'))});const imageWidth=img.naturalWidth||1000;const imageHeight=img.naturalHeight||1000;const worker=await createWorker('por');const result=await worker.recognize(t.backgroundDataUrl);const words=(result as any).data.words||[];const next={...t.fieldPositions!};for(const w of words){const s=String(w.text||'').toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');const b=w.bbox;if(!b)continue;let key:FieldKey|undefined;if(s.includes('NOME'))key='name';else if(s.includes('MATRICULA')||s.includes('MATR'))key='registration';else if(s.includes('FUNCAO')||s.includes('FUNCA'))key='role';if(key){next[key]={x:Math.max(0,(b.x0/imageWidth)*100),y:Math.min(92,((b.y1/imageHeight)*100)+1),width:Math.min(90,Math.max(25,(((b.x1-b.x0)/imageWidth*100+30)),height:8}}}await worker.terminate();onChange({fieldPositions:next})}catch(e){alert('Não foi possível reconhecer o texto automaticamente. Você pode posicionar os campos manualmente.')}finally{setBusy(false)}}
+  const t=normalizedTemplate(template)
+  const [selected,setSelected]=useState<FieldKey>('name')
+  const [busy,setBusy]=useState(false)
+  const inputRef=useRef<HTMLInputElement>(null)
+
+  const updateField=(key:FieldKey,p:Partial<FieldPosition>)=>
+    onChange({fieldPositions:{...t.fieldPositions!,[key]:{...t.fieldPositions![key],...p}}})
+
+  const loadImage=(file?:File)=>{
+    if(!file)return
+    const reader=new FileReader()
+    reader.onload=()=>{
+      const img=new Image()
+      img.onload=()=>{
+        const max=1400
+        const scale=Math.min(1,max/img.width,max/img.height)
+        const canvas=document.createElement('canvas')
+        canvas.width=Math.max(1,Math.round(img.width*scale))
+        canvas.height=Math.max(1,Math.round(img.height*scale))
+        canvas.getContext('2d')?.drawImage(img,0,0,canvas.width,canvas.height)
+        onChange({backgroundDataUrl:canvas.toDataURL('image/jpeg',0.92),fieldPositions:defaultFields})
+      }
+      img.src=String(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const paste=(e:React.ClipboardEvent<HTMLDivElement>)=>{
+    const item=[...e.clipboardData.items].find(x=>x.type.startsWith('image/'))
+    if(item){e.preventDefault();loadImage(item.getAsFile()||undefined)}
+  }
+
+  const autoDetect=async()=>{
+    if(!t.backgroundDataUrl)return
+    setBusy(true)
+    try{
+      const img=new Image()
+      img.src=t.backgroundDataUrl
+      await new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=reject})
+      const imageWidth=img.naturalWidth||1000
+      const imageHeight=img.naturalHeight||1000
+      const worker=await createWorker('por')
+      const result=await worker.recognize(t.backgroundDataUrl)
+      const words=(result as any).data.words||[]
+      const next={...t.fieldPositions!}
+      for(const w of words){
+        const s=String(w.text||'').toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
+        const b=w.bbox
+        if(!b)continue
+        let key:FieldKey|undefined
+        if(s.includes('NOME'))key='name'
+        else if(s.includes('MATRICULA')||s.includes('MATR'))key='registration'
+        else if(s.includes('FUNCAO')||s.includes('FUNCA'))key='role'
+        if(key){
+          next[key]={
+            x:Math.max(0,Math.min(90,(b.x0/imageWidth)*100)),
+            y:Math.max(0,Math.min(92,(b.y1/imageHeight)*100+1)),
+            width:Math.min(90,Math.max(20,(b.x1-b.x0)/imageWidth*100+30)),
+            height:8
+          }
+        }
+      }
+      await worker.terminate()
+      onChange({fieldPositions:next})
+    }catch{
+      alert('Não foi possível reconhecer os campos automaticamente. Ajuste-os manualmente.')
+    }finally{setBusy(false)}
+  }
+
   return <div className="visual-editor" onPaste={paste} tabIndex={0}>
-    <div className="editor-toolbar"><div><b>Montar modelo</b><span>Cole uma foto com Ctrl+V ou envie a imagem.</span></div><div className="toolbar-actions"><button className="secondary" onClick={()=>inputRef.current?.click()}><ImagePlus size={16}/> Imagem</button><button className="secondary" disabled={!t.backgroundDataUrl||busy} onClick={autoDetect}><ScanText size={16}/> {busy?'Reconhecendo...':'Reconhecer campos'}</button><button className="secondary" disabled={!t.backgroundDataUrl} onClick={()=>onChange({backgroundDataUrl:undefined,fieldPositions:defaultFields})}><RotateCcw size={16}/> Voltar ao modelo padrão</button></div><input ref={inputRef} hidden type="file" accept="image/*" onChange={e=>loadImage(e.target.files?.[0])}/></div>
-    <div className="editor-help"><MousePointer2 size={15}/> Clique em um campo e ajuste X, Y, largura e altura. Depois arraste o campo na imagem.</div>
+    <div className="editor-toolbar">
+      <div><b>Montar modelo</b><span>Cole a foto do crachá com Ctrl+V ou envie uma imagem.</span></div>
+      <div className="toolbar-actions">
+        <button className="secondary" type="button" onClick={()=>inputRef.current?.click()}><ImagePlus size={16}/> Imagem</button>
+        <button className="secondary" type="button" disabled={!t.backgroundDataUrl||busy} onClick={autoDetect}><ScanText size={16}/> {busy?'Reconhecendo...':'Reconhecer campos'}</button>
+        <button className="secondary" type="button" disabled={!t.backgroundDataUrl} onClick={()=>onChange({backgroundDataUrl:undefined,fieldPositions:defaultFields})}><RotateCcw size={16}/> Modelo padrão</button>
+      </div>
+      <input ref={inputRef} hidden type="file" accept="image/*" onChange={e=>loadImage(e.target.files?.[0])}/>
+    </div>
+
+    <div className="editor-help"><MousePointer2 size={15}/> Clique e arraste as caixas NOME, MATRÍCULA e FUNÇÃO para o lugar exato.</div>
+
     <div className="editor-workspace">
       <div className="canvas-wrap">
-        {t.backgroundDataUrl?<div className="template-canvas" style={{backgroundImage:'url('+t.backgroundDataUrl+')'}}>{(['name','registration','role'] as FieldKey[]).map(k=><div key={k} className={'drag-field '+(selected===k?'selected':'')} style={fieldStyle(t.fieldPositions![k])} onMouseDown={e=>{e.preventDefault();setSelected(k);const startX=e.clientX,startY=e.clientY,start={...t.fieldPositions![k]};const rect=(e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();const move=(ev:MouseEvent)=>{updateField(k,{x:Math.max(0,Math.min(100-start.width,start.x+(ev.clientX-startX)/rect.width*100)),y:Math.max(0,Math.min(100-start.height,start.y+(ev.clientY-startY)/rect.height*100))})};const up=()=>{window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up)};window.addEventListener('mousemove',move);window.addEventListener('mouseup',up)}}>{k==='name'?'NOME':k==='registration'?'MATRÍCULA':'FUNÇÃO'}<small>arraste</small></div>)}</div>:<div className="drop-zone"><ImagePlus size={42}/><b>Cole ou envie a imagem do crachá pronto</b><span>Ctrl+V dentro desta área ou clique em “Imagem”.</span><button className="primary" onClick={()=>inputRef.current?.click()}><Upload size={16}/> Escolher imagem</button></div>}
+        {t.backgroundDataUrl
+          ? <div className="template-canvas" style={{backgroundImage:`url(${t.backgroundDataUrl})`}}>
+              {(['name','registration','role'] as FieldKey[]).map(k=>
+                <div key={k} className={'drag-field '+(selected===k?'selected':'')} style={fieldStyle(t.fieldPositions![k])}
+                  onMouseDown={e=>{
+                    e.preventDefault()
+                    setSelected(k)
+                    const startX=e.clientX,startY=e.clientY,start={...t.fieldPositions![k]}
+                    const rect=(e.currentTarget.parentElement as HTMLElement).getBoundingClientRect()
+                    const move=(ev:MouseEvent)=>{
+                      updateField(k,{
+                        x:Math.max(0,Math.min(100-start.width,start.x+(ev.clientX-startX)/rect.width*100)),
+                        y:Math.max(0,Math.min(100-start.height,start.y+(ev.clientY-startY)/rect.height*100))
+                      })
+                    }
+                    const up=()=>{window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up)}
+                    window.addEventListener('mousemove',move);window.addEventListener('mouseup',up)
+                  }}>
+                  {k==='name'?'NOME':k==='registration'?'MATRÍCULA':'FUNÇÃO'}<small>arraste</small>
+                </div>)}
+            </div>
+          : <div className="drop-zone">
+              <ImagePlus size={42}/>
+              <b>Cole ou envie o crachá pronto</b>
+              <span>Ctrl+V dentro desta área ou clique em “Imagem”.</span>
+              <button className="primary" type="button" onClick={()=>inputRef.current?.click()}><Upload size={16}/> Escolher imagem</button>
+            </div>}
       </div>
-      <div className="field-controls"><h4>Campo selecionado</h4><select value={selected} onChange={e=>setSelected(e.target.value as FieldKey)}><option value="name">Nome</option><option value="registration">Matrícula</option><option value="role">Função</option></select>{(['x','y','width','height'] as const).map(k=><label key={k}>{k==='x'?'X':k==='y'?'Y':k==='width'?'Largura':'Altura'}<input type="number" min="0" max="100" step=".5" value={Number(t.fieldPositions![selected][k]).toFixed(1)} onChange={e=>updateField(selected,{[k]:Number(e.target.value)})}/></label>)}<div className="field-tip">O reconhecimento automático procura por “NOME”, “MATRÍCULA” e “FUNÇÃO”. Depois você pode ajustar cada caixa manualmente.</div></div>
+
+      <div className="field-controls">
+        <h4>Campo selecionado</h4>
+        <select value={selected} onChange={e=>setSelected(e.target.value as FieldKey)}>
+          <option value="name">Nome</option><option value="registration">Matrícula</option><option value="role">Função</option>
+        </select>
+        {(['x','y','width','height'] as const).map(k=>
+          <label key={k}>{k==='x'?'X':k==='y'?'Y':k==='width'?'Largura':'Altura'}
+            <input type="number" min="0" max="100" step=".5" value={Number(t.fieldPositions![selected][k])}
+              onChange={e=>updateField(selected,{[k]:Number(e.target.value)})}/>
+          </label>)}
+        <div className="field-tip">O OCR procura NOME, MATRÍCULA e FUNÇÃO. Se não encontrar algum campo, basta posicioná-lo manualmente.</div>
+      </div>
     </div>
   </div>
 }
-
 function App(){
  const[tab,setTab]=useState<Tab>('dashboard');const[people,setPeople]=useState<Person[]>(loadPeople);const[templates,setTemplates]=useState<BadgeTemplate[]>(loadTemplates().map(normalizedTemplate));const[batches,setBatches]=useState<Batch[]>(loadBatches());const[selectedTemplate,setSelectedTemplate]=useState(defaultTemplate.id);const[search,setSearch]=useState('');const[fileRef]=useState(()=>({current:null as HTMLInputElement|null}));const template=normalizedTemplate(templates.find(t=>t.id===selectedTemplate)||templates[0]);const filtered=useMemo(()=>people.filter(p=>(p.name+' '+p.registration+' '+p.role).toLowerCase().includes(search.toLowerCase())),[people,search]);const updatePeople=(v:Person[])=>{setPeople(v);savePeople(v)};const updateTemplates=(v:BadgeTemplate[])=>{setTemplates(v);saveTemplates(v)};const edit=(p:Partial<BadgeTemplate>)=>updateTemplates(templates.map(t=>t.id===template.id?normalizedTemplate({...t,...p}):t));const importFile=async(f?:File)=>{if(!f)return;try{const x=await importSpreadsheet(f);updatePeople([...people,...x]);setTab('people');alert(x.length+' pessoas importadas.')}catch{alert('Planilha inválida. Use XLSX, XLS ou CSV.')}};const gen=()=>{if(!people.length)return alert('Cadastre ou importe pessoas primeiro.');const b:Batch={id:crypto.randomUUID(),name:'Lote '+new Date().toLocaleString('pt-BR'),templateId:template.id,people,createdAt:new Date().toISOString()};const n=[b,...batches];setBatches(n);saveBatches(n);setTab('generate')};useEffect(()=>{const fn=(e:ClipboardEvent)=>{if(tab!=='templates')return;const item=[...e.clipboardData.items].find(x=>x.type.startsWith('image/'));if(item){const el=document.querySelector('.visual-editor') as HTMLElement|null;el?.focus()}};window.addEventListener('paste',fn);return()=>window.removeEventListener('paste',fn)},[tab])
  return <div className="app"><aside className="sidebar"><div className="brand"><div className="brand-icon"><BadgeCheck size={22}/></div><div><strong>Cracha Fast</strong><small>Carteirinhas em lote</small></div></div><nav><Nav active={tab==='dashboard'} icon={<LayoutDashboard/>} text="Dashboard" onClick={()=>setTab('dashboard')}/><Nav active={tab==='people'} icon={<Users/>} text="Pessoas" onClick={()=>setTab('people')}/><Nav active={tab==='templates'} icon={<Palette/>} text="Modelos" onClick={()=>setTab('templates')}/><Nav active={tab==='generate'} icon={<Printer/>} text="Gerar crachás" onClick={()=>setTab('generate')}/><Nav active={tab==='settings'} icon={<Settings/>} text="Configurações" onClick={()=>setTab('settings')}/></nav><div className="side-bottom"><div className="mini-plan"><Sparkles size={17}/><div><b>Plano Demo</b><small>Pronto para evoluir</small></div></div></div></aside><main className="main"><header className="topbar"><div><span className="eyebrow">GERADOR DE CARTEIRINHAS</span><h1>{tab==='dashboard'?'Visão geral':tab==='people'?'Pessoas':tab==='templates'?'Modelos de crachá':tab==='generate'?'Gerar crachás':'Configurações'}</h1></div><button className="primary" onClick={()=>setTab('generate')}><Printer size={17}/> Gerar</button></header>
