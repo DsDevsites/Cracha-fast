@@ -80,6 +80,7 @@ function VisualEditor({template,onChange}:{template:BadgeTemplate;onChange:(p:Pa
         else if(s.includes('FUNCAO')||s.includes('FUNCA'))key='role'
         if(key){
           next[key]={
+            ...next[key],
             x:Math.max(0,Math.min(90,(b.x0/imageWidth)*100)),
             y:Math.max(0,Math.min(92,(b.y1/imageHeight)*100+1)),
             width:Math.min(90,Math.max(20,(b.x1-b.x0)/imageWidth*100+30)),
