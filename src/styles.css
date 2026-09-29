@@ -17,3 +17,11 @@
   .print-sheet .badge{transform:none!important}
   .print-sheet>*{visibility:visible!important}
 }
+
+.image-badge{position:relative;width:170px;height:265px;overflow:hidden;background:#fff}
+.image-badge-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
+.image-badge-field{z-index:2}
+@media print{
+  .image-badge-bg{display:block!important;visibility:visible!important}
+  .print-sheet{background:#fff!important}
+}
