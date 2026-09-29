@@ -74,7 +74,7 @@ export async function exportDocx(people:Person[],t:BadgeTemplate){
         children:[new Paragraph({spacing:{before:0,after:0,line:1},children:[new ImageRun({data:image,transformation:{width:181,height:280}})]})]
       }))
     }
-    rows.push(new TableRow({children:cells,height:{value:280,type:'dxa'}}))
+    rows.push(new TableRow({children:cells}))
   }
 
   const d=new Document({
